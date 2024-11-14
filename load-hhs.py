@@ -16,12 +16,6 @@ def load_data(file_path):
     data = helper_functions.process_hhs_data(data)
     return data
 
-def create_tables(cursor):
-    """Create required tables if they do not already exist."""
-    cursor.execute(queries.HOSPITAL_SPECIFIC_DETAILS_CREATE_QUERY)
-    cursor.execute(queries.HOSPITAL_LOGISTICS_CREATE_QUERY)
-
-
 def batch_insert_data(cursor, query, data, batch_size, table_name):
     """Insert data in batches."""
     for row in range(0, len(data), batch_size):
@@ -50,8 +44,6 @@ def main():
             autocommit=True
         ) as conn:
             with conn.cursor() as cur:
-                # Create tables
-                create_tables(cur)
                 
                 for row_index in range(0, len(data), BATCH_SIZE):
                     batch_df = data[row_index:row_index + BATCH_SIZE]
@@ -90,6 +82,10 @@ def main():
 
     except psycopg.OperationalError as e:
         print("Database connection error:", e)
+
+    finally:
+        cur.close()
+        conn.close()
 
 
 if __name__ == "__main__":

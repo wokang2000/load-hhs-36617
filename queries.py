@@ -65,3 +65,14 @@ INSERT INTO HospitalSpecificDetails (
     latitude
 ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
 """
+
+HOSPITAL_QUALITY_DETAILS_CREATE_QUERY = """
+CREATE TABLE IF NOT EXISTS HospitalQualityDetails (
+  hospital_pk TEXT REFERENCES HospitalSpecificDetails(hospital_pk),
+  last_updated DATE CHECK (last_updated <= CURRENT_DATE),
+  hospital_overall_rating INTEGER,
+  hospital_ownership TEXT,
+  emergency_services BOOLEAN,
+  PRIMARY KEY (hospital_pk, last_updated)
+);
+"""
