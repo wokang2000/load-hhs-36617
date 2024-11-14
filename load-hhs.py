@@ -1,6 +1,7 @@
 import sys
 import pandas as pd
 import psycopg
+from psycopg import errors
 import credentials
 import queries
 import helper_functions
@@ -12,7 +13,7 @@ BATCH_SIZE = 100
 def load_data(file_path):
     """Load and preprocess CSV data."""
     data = pd.read_csv(file_path)
-    return helper_functions.preprocess(data)
+    return helper_functions.process_hhs_data(data)
 
 
 def create_tables(cursor):
@@ -39,14 +40,9 @@ def main():
 
     csv_file = sys.argv[1]
     data = load_data(csv_file)
-    
-    # Prepare data tuples for batch insertion
-    hospital_specific_details = data[['hospital_pk', 'state', 'hospital_name', 'address', 'city', 'zip', 'fips_code', 'longitude', 'latitude']].values.tolist()
-    hospital_logistics = data[['hospital_pk', 'collection_week', 'all_adult_hospital_beds_7_day_avg', 'all_pediatric_inpatient_beds_7_day_avg', 
-                               'all_adult_hospital_inpatient_bed_occupied_7_day_avg', 'all_pediatric_inpatient_bed_occupied_7_day_avg', 
-                               'total_icu_beds_7_day_avg', 'icu_beds_used_7_day_avg', 'inpatient_beds_used_covid_7_day_avg', 
-                               'staffed_icu_adult_patients_confirmed_covid_7_day_avg']].values.tolist()
-    
+
+    print(data[data['all_pediatric_inpatient_bed_occupied_7_day_avg']<0]['hospital_pk'])
+
     try:
         with psycopg.connect(
             host="pinniped.postgres.database.azure.com",
@@ -59,11 +55,40 @@ def main():
                 # Create tables
                 create_tables(cur)
                 
-                # Insert hospital specific details in batches
-                batch_insert_data(cur, queries.HOSPITAL_SPECIFIC_DETAILS_INSERT_QUERY, hospital_specific_details, BATCH_SIZE, "Hospital Specific Details")
-
-                # Insert hospital logistics data in batches
-                batch_insert_data(cur, queries.HOSPITAL_LOGISTICS_INSERT_QUERY, hospital_logistics, BATCH_SIZE, "Hospital Logistics")
+                for row_index in range(0, len(data), BATCH_SIZE):
+                    batch_df = data[row_index:row_index + BATCH_SIZE]
+                    print("Running process for batch", (row_index // BATCH_SIZE) + 1)
+                    hospital_logistics_values = [
+                        (row['hospital_pk'], row['collection_week'], row['all_adult_hospital_beds_7_day_avg'], 
+                        row['all_pediatric_inpatient_beds_7_day_avg'], row['all_adult_hospital_inpatient_bed_occupied_7_day_avg'], 
+                        row['all_pediatric_inpatient_bed_occupied_7_day_avg'], row['total_icu_beds_7_day_avg'], 
+                        row['icu_beds_used_7_day_avg'], row['inpatient_beds_used_covid_7_day_avg'], 
+                        row['staffed_icu_adult_patients_confirmed_covid_7_day_avg'])
+                        for idx, row in batch_df.iterrows()
+                    ]
+                    try:
+                        with conn.transaction():
+                            cur.executemany(queries.HOSPITAL_LOGISTICS_INSERT_QUERY, hospital_logistics_values)
+                            print("Successfully inserted batch into HospitalLogistics table")
+                    except errors.ForeignKeyViolation as fk_error:
+                        print("Foreign key violation encountered.")
+                        print("Inserting into HospitalSpecificDetails.")
+                        hospital_specific_details_values = [
+                                (row['hospital_pk'], row['state'], row['hospital_name'], 
+                                row['address'], row['city'], 
+                                row['zip'], row['fips_code'], 
+                                row['longitude'], row['latitude'])
+                                for idx, row in batch_df.iterrows()
+                            ]
+                        
+                        with conn.transaction():
+                            cur.executemany(queries.HOSPITAL_SPECIFIC_DETAILS_INSERT_QUERY, hospital_specific_details_values)
+                            print("Successfully inserted batch into HospitalSpecificDetails table")
+                        
+                        with conn.transaction():
+                            cur.executemany(queries.HOSPITAL_LOGISTICS_INSERT_QUERY, hospital_logistics_values)
+                            print("Successfully inserted batch into HospitalLogistics table")
+                
 
     except psycopg.OperationalError as e:
         print("Database connection error:", e)
