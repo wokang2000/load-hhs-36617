@@ -7,14 +7,14 @@ import queries
 import helper_functions
 
 
-BATCH_SIZE = 100
+BATCH_SIZE = 1000
 
 
 def load_data(file_path):
     """Load and preprocess CSV data."""
     data = pd.read_csv(file_path)
-    return helper_functions.process_hhs_data(data)
-
+    data = helper_functions.process_hhs_data(data)
+    return data
 
 def create_tables(cursor):
     """Create required tables if they do not already exist."""

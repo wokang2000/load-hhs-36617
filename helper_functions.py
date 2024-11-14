@@ -1,5 +1,6 @@
 import pandas as pd
 import re
+import numpy as np
 
 
 def extract_coordinates(point_str):
@@ -68,15 +69,13 @@ def process_hhs_data(data):
         'staffed_icu_adult_patients_confirmed_covid_7_day_avg'
     ]
     for column in invalid_value_columns:
-        data[column] = data[column].apply(lambda x: None if x in ['NA', -999999] else x)
+        data[column] = data[column].apply(lambda x: np.nan if x in ['NA', -999999] else x)
+        data[column] = data[column].apply(lambda x: np.nan if x < 0 else x)
+
 
     # Ensure 'state' values are two-letter alphabetical codes
     data['state'] = data['state'].apply(lambda x: x if re.match(r'^[a-zA-Z]{2}$', str(x)) else None)
-    data['all_pediatric_inpatient_bed_occupied_7_day_avg'] = data['all_pediatric_inpatient_bed_occupied_7_day_avg'].apply(lambda x: 0 if x < 0 else x)
 
-    print(data[data['all_pediatric_inpatient_bed_occupied_7_day_avg']<0]['hospital_pk'])
-
-        
     # Replace 'NA' values in categorical columns with None
     categorical_columns = ['hospital_name', 'address', 'city', 'zip', 'fips_code']
     for column in categorical_columns:
