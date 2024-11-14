@@ -25,7 +25,7 @@ def extract_coordinates(point_str):
         return None, None
 
 
-def preprocess(data):
+def process_hhs_data(data):
     """
     Preprocess hospital data by cleaning and transforming specified columns.
 
