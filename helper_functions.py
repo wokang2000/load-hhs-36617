@@ -1,6 +1,7 @@
 import pandas as pd
 import re
 import numpy as np
+import datetime
 
 
 def extract_coordinates(point_str):
@@ -55,7 +56,7 @@ def process_hhs_data(data):
     data = data[data['hospital_pk'].str.len() == 6]
     
     # Convert 'collection_week' to datetime and retain only the date part
-    data['collection_week'] = pd.to_datetime(data['collection_week'], errors='coerce').dt.date
+    data['collection_week'] = pd.to_datetime(data['collection_week'], errors='coerce').apply(lambda x: x.date() if pd.notnull(x) else None)
     
     # Replace invalid values in bed and occupancy columns with None
     invalid_value_columns = [

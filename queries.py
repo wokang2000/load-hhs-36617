@@ -8,7 +8,7 @@ and HospitalSpecificDetails tables in the hospital database.
 HOSPITAL_LOGISTICS_CREATE_QUERY = """
 CREATE TABLE IF NOT EXISTS HospitalLogistics (
     hospital_pk TEXT PRIMARY KEY REFERENCES HospitalSpecificDetails (hospital_pk),
-    collection_week TIMESTAMP CHECK (collection_week <= CURRENT_DATE::TIMESTAMP),
+    collection_week DATE CHECK (collection_week <= CURRENT_DATE::DATE),
     all_adult_hospital_beds_7_day_avg NUMERIC CHECK (all_adult_hospital_beds_7_day_avg >= 0),
     all_pediatric_inpatient_beds_7_day_avg NUMERIC CHECK (all_pediatric_inpatient_beds_7_day_avg >= 0),
     all_adult_hospital_inpatient_bed_occupied_7_day_avg NUMERIC CHECK (all_adult_hospital_inpatient_bed_occupied_7_day_avg >= 0),
@@ -32,14 +32,13 @@ INSERT INTO HospitalLogistics (
     icu_beds_used_7_day_avg, 
     inpatient_beds_used_covid_7_day_avg, 
     staffed_icu_adult_patients_confirmed_covid_7_day_avg
-) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+) VALUES (%s, CAST(%s AS DATE), %s, %s, %s, %s, %s, %s, %s, %s)
 ON CONFLICT (hospital_pk) DO NOTHING;
 """
 
 # Hospital Specific Details Queries
 
 HOSPITAL_SPECIFIC_DETAILS_CREATE_QUERY = """
-DROP TABLE IF EXISTS HospitalSpecificDetails CASCADE;
 CREATE TABLE IF NOT EXISTS HospitalSpecificDetails (
     hospital_pk TEXT PRIMARY KEY,
     state CHAR(2),
