@@ -8,6 +8,30 @@ from psycopg import errors
 
 
 def process_cms_data(data):
+    """
+    Processes and transformation CMS hospital quality data.
+
+    Parameters:
+    data (pd.DataFrame): The raw data to be preprocessed. 
+    Expected columns include minimum of:
+    ['Facility ID', 'State', 'Facility Name', 'Address', 'City', 'ZIP Code', 
+     'Emergency Services', 'Hospital Ownership', 'Hospital overall rating', 
+     'last_updated']
+
+    Returns:
+    pd.DataFrame: Processed and transformed CMS hospital quality data.
+
+    Notes:
+    - The function performs the following transformations:
+      - Renames columns to match database schema.
+      - Filters for valid hospital primary keys (6 characters).
+      - Converts 'emergency_services' to a boolean (True if "Yes", False if "No").
+      - Converts 'hospital_overall_rating' to an integer; replaces non-numeric
+        values with NaN.
+      - Selects only columns of interest for further steps.
+      - Extracts longitude and latitude from 'geocoded_hospital_address'.
+    """
+    
     # list the columns to be used in preparing and loadking cms quality data
     columns = [
         "hospital_pk",
@@ -37,9 +61,6 @@ def process_cms_data(data):
     # rename columns to be consistent with the schema
     data = data.rename(columns=rename_columns)
 
-    # insert last_updated column in the data. We get it from sys.args
-    data['last_updated'] = last_updated
-
     # data transformtions
 
     # ensure that we do not take any row with bizzare hospital_pk value
@@ -62,7 +83,25 @@ def process_cms_data(data):
     return data
 
 
-def insert_cms_data(conn, data, batch_size=100):
+def batch_insert_cms_data(conn, data, batch_size=100):
+    """
+    Inserts CMS hospital quality data into two database tables in batches,
+    with handling for foreign key violations.
+
+    Parameters:
+    conn (psycopg.Connection): Database connection object.
+    data (pd.DataFrame): Processed CMS hospital data to be inserted.
+    batch_size (int): Number of records to process per batch. Default is 100.
+
+    Notes:
+    - The function performs the following transformations:
+      - Defines SQL insertion queries for insertion.
+      - Inserts rows in 'HospitalQualityDetails' table in batches.
+      - Handles ForeignKeyViolation error by first inserting into 'HospitalSpecificDetails'
+        if required, and then retries insertion into 'HospitalQualityDetails'.
+      - Uses 'ON CONFLICT DO NOTHING' to prevent duplicate entries on conflict.
+    """
+    
     # Define the SQL query for insertion
     cur = conn.cursor()
 
@@ -148,10 +187,10 @@ if __name__ == "__main__":
     # last_updated = date(2021,7,1)
     # file_path = 'data/Hospital_General_Information-2021-07.csv'
 
-    data = pd.read_csv(file_path)
-    # TODO: remove
-    data = data[:50]
-
+    data = pd.read_csv(file_path)   
+    # insert last_updated column in the data. We get it from sys.args
+    data['last_updated'] = last_updated
+    
     processed_data = process_cms_data(data)
 
     conn = psycopg.connect(
@@ -161,6 +200,6 @@ if __name__ == "__main__":
         password=credentials.DB_PASSWORD
     )
 
-    batch_size = 10
+    batch_size = 100
 
-    insert_cms_data(conn, processed_data, batch_size)
+    batch_insert_cms_data(conn, processed_data, batch_size)
