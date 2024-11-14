@@ -1,6 +1,7 @@
 import psycopg
 import pandas as pd
 import sys
+import numpy as np
 import credentials
 from datetime import datetime
 from psycopg import errors
@@ -51,7 +52,7 @@ def process_cms_data(data):
         apply(lambda x: True if x.lower() == 'yes' else False)
     # hospital_overall_rating is in string, convert it to int
     data['hospital_overall_rating'] = data['hospital_overall_rating'].\
-        apply(lambda x: int(x) if x.isnumeric() else 0)
+        apply(lambda x: int(x) if x.isnumeric() else np.nan)
 
     # take only columns of ineterest
     data = data[columns]
