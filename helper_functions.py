@@ -72,7 +72,7 @@ def process_hhs_data(data):
 
     # Ensure 'state' values are two-letter alphabetical codes
     data['state'] = data['state'].apply(lambda x: x if re.match(r'^[a-zA-Z]{2}$', str(x)) else None)
-    data['all_pediatric_inpatient_bed_occupied_7_day_avg'] = data['all_pediatric_inpatient_bed_occupied_7_day_avg'].apply(lambda x: None if x < 0 else x)
+    data['all_pediatric_inpatient_bed_occupied_7_day_avg'] = data['all_pediatric_inpatient_bed_occupied_7_day_avg'].apply(lambda x: 0 if x < 0 else x)
 
     print(data[data['all_pediatric_inpatient_bed_occupied_7_day_avg']<0]['hospital_pk'])
 

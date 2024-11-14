@@ -36,12 +36,10 @@ def batch_insert_data(cursor, query, data, batch_size, table_name):
 def main():
     if len(sys.argv) < 2:
         print("Please provide the CSV file path as an argument.")
-        sys.exit(1)
+        #sys.exit(1)
 
     csv_file = sys.argv[1]
     data = load_data(csv_file)
-
-    print(data[data['all_pediatric_inpatient_bed_occupied_7_day_avg']<0]['hospital_pk'])
 
     try:
         with psycopg.connect(
