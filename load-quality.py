@@ -1,6 +1,7 @@
 import psycopg
 import pandas as pd
 import sys
+import credentials
 from datetime import datetime
 from psycopg import errors
 
@@ -153,8 +154,10 @@ if __name__ == "__main__":
     processed_data = process_cms_data(data)
 
     conn = psycopg.connect(
-        host="pinniped.postgres.database.azure.com", dbname="sakshis",
-        user="sakshis", password="gGjznhHH3t"
+        host="pinniped.postgres.database.azure.com",
+        dbname=credentials.DB_USER,
+        user=credentials.DB_USER,
+        password=credentials.DB_PASSWORD
     )
 
     batch_size = 10
