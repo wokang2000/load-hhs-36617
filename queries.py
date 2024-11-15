@@ -64,6 +64,7 @@ INSERT INTO HospitalSpecificDetails (
     longitude,
     latitude
 ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+ON CONFLICT (hospital_pk) DO NOTHING;
 """
 
 HOSPITAL_QUALITY_DETAILS_CREATE_QUERY = """
@@ -75,4 +76,30 @@ CREATE TABLE IF NOT EXISTS HospitalQualityDetails (
   emergency_services BOOLEAN,
   PRIMARY KEY (hospital_pk, last_updated)
 );
+"""
+
+HOSPITAL_QUALTIY_DETAILS_INSERT_QUERY = """
+    INSERT INTO HospitalQualityDetails (
+        hospital_pk, last_updated, hospital_overall_rating,
+        hospital_ownership, emergency_services
+    ) VALUES (%s, %s, %s, %s, %s)
+    ON CONFLICT (hospital_pk, last_updated) DO NOTHING;
+"""
+
+STATIC_DETAILS_INSERT_QUERY = """
+    INSERT INTO HospitalSpecificDetails (
+        hospital_pk, hospital_name, address, city, zip, state
+    ) VALUES (%s, %s, %s, %s, %s, %s)
+    ON CONFLICT (hospital_pk) DO NOTHING;
+"""
+
+STATIC_DETAILS_UPDATE_QUERY = """
+    UPDATE HospitalSpecificDetails
+    SET
+        hospital_name = %s,
+        address = %s,
+        city = %s,
+        zip = %s,
+        state = %s
+    WHERE hospital_pk = %s;
 """

@@ -88,3 +88,81 @@ def process_hhs_data(data):
     )
 
     return data
+
+
+def process_cms_data(data):
+    """
+    Processes and transformation CMS hospital quality data.
+
+    Parameters:
+    data (pd.DataFrame): The raw data to be preprocessed. 
+    Expected columns include minimum of:
+    ['Facility ID', 'State', 'Facility Name', 'Address', 'City', 'ZIP Code', 
+     'Emergency Services', 'Hospital Ownership', 'Hospital overall rating', 
+     'last_updated']
+
+    Returns:
+    pd.DataFrame: Processed and transformed CMS hospital quality data.
+
+    Notes:
+    - The function performs the following transformations:
+      - Renames columns to match database schema.
+      - Filters for valid hospital primary keys (6 characters).
+      - Converts 'emergency_services' to a boolean (True if "Yes", False if "No").
+      - Converts 'hospital_overall_rating' to an integer; replaces non-numeric
+        values with NaN.
+      - Selects only columns of interest for further steps.
+      - Extracts longitude and latitude from 'geocoded_hospital_address'.
+    """
+    
+    # list the columns to be used in preparing and loadking cms quality data
+    columns = [
+        "hospital_pk",
+        "last_updated",
+        "hospital_overall_rating",
+        "hospital_name",
+        "address",
+        "city",
+        "zip",
+        "state",
+        "hospital_ownership",
+        "emergency_services",
+    ]
+
+    rename_columns = {
+        'Facility ID': 'hospital_pk',
+        'State': 'state',
+        'Facility Name': 'hospital_name',
+        'Address': 'address',
+        'City': 'city',
+        'ZIP Code': 'zip',
+        'Emergency Services': 'emergency_services',
+        'Hospital Ownership': 'hospital_ownership',
+        'Hospital overall rating': 'hospital_overall_rating'
+        }
+
+    # rename columns to be consistent with the schema
+    data = data.rename(columns=rename_columns)
+
+    # data transformtions
+
+    # ensure that we do not take any row with bizzare hospital_pk value
+    data['valid_pk'] = data["hospital_pk"].\
+        apply(lambda x: True if len(x) <= 6 else False)
+    data = data[data['valid_pk']]
+
+    # convert emergency_services is 'Yes'/'No', convert to boolean
+    data['emergency_services'] = data['emergency_services'].\
+        apply(lambda x: True if x.lower() == 'yes' else False)
+    # hospital_overall_rating is in string, convert it to int
+    data['hospital_overall_rating'] = data['hospital_overall_rating'].\
+        apply(lambda x: int(x) if x.isnumeric() else np.nan)
+    # convert zip to string
+    data['zip'] = data['zip'].apply(lambda x: str(x))
+
+    # take only columns of ineterest
+    data = data[columns]
+
+    print("CMS data processing complete")
+
+    return data

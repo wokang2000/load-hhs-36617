@@ -5,83 +5,65 @@ import numpy as np
 import credentials
 from datetime import datetime
 from psycopg import errors
+import queries
+import helper_functions as hf
 
 
-def process_cms_data(data):
+def check_and_update_static_data(conn, data, columns):
     """
-    Processes and transformation CMS hospital quality data.
+    Checks for discrepancies between HospitalsQualityDetails and 
+    HospitalSpecificDetails and updates them.
 
     Parameters:
-    data (pd.DataFrame): The raw data to be preprocessed. 
-    Expected columns include minimum of:
-    ['Facility ID', 'State', 'Facility Name', 'Address', 'City', 'ZIP Code', 
-     'Emergency Services', 'Hospital Ownership', 'Hospital overall rating', 
-     'last_updated']
-
-    Returns:
-    pd.DataFrame: Processed and transformed CMS hospital quality data.
+    conn (psycopg.Connection): Database connection object.
+    data (pd.DataFrame): Processed CMS hospital data to be compared.
+    columns (list): List of column to be compared and updated.
 
     Notes:
     - The function performs the following transformations:
-      - Renames columns to match database schema.
-      - Filters for valid hospital primary keys (6 characters).
-      - Converts 'emergency_services' to a boolean (True if "Yes", False if "No").
-      - Converts 'hospital_overall_rating' to an integer; replaces non-numeric
-        values with NaN.
-      - Selects only columns of interest for further steps.
-      - Extracts longitude and latitude from 'geocoded_hospital_address'.
+      - Reads existing data from the `HospitalSpecificDetails` table based on
+        the `hospital_pk` values in the batch.
+      - Identifies discrepancies between the batch data and `HospitalSpecificDetails` by performing a join 
+        and checking for mismatched columns.
+      - Constructs a DataFrame of discrepancies (`discrepancies_df`) containing records where column values 
+        do not match the existing data in `HospitalSpecificDetails`.
+      - Executes an update query to modify mismatched rows in `HospitalSpecificDetails` based on `hospital_pk`.
     """
     
-    # list the columns to be used in preparing and loadking cms quality data
-    columns = [
-        "hospital_pk",
-        "last_updated",
-        "hospital_overall_rating",
-        "hospital_name",
-        "address",
-        "city",
-        "zip",
-        "state",
-        "hospital_ownership",
-        "emergency_services",
-    ]
+    data = data.copy()
+    # read HospitalSpecificDetails for hospital_pk in qualtiy data batch
+    with conn.transaction():
+        params = "'" + "','".join(list(data['hospital_pk'])) + "'"
 
-    rename_columns = {
-        'Facility ID': 'hospital_pk',
-        'State': 'state',
-        'Facility Name': 'hospital_name',
-        'Address': 'address',
-        'City': 'city',
-        'ZIP Code': 'zip',
-        'Emergency Services': 'emergency_services',
-        'Hospital Ownership': 'hospital_ownership',
-        'Hospital overall rating': 'hospital_overall_rating'
-        }
+        # Execute the query with the hospital_pks tuple as a parameter
+        cur = conn.cursor()
+        cur.execute("SELECT hospital_pk, hospital_name, address, city, zip, state "
+                    "FROM HospitalSpecificDetails "
+                    "WHERE hospital_pk IN (" + params + ")")
 
-    # rename columns to be consistent with the schema
-    data = data.rename(columns=rename_columns)
+        static_data = cur.fetchall()
+        h_df = pd.DataFrame(static_data, columns=columns)
 
-    # data transformtions
+        # join h_df with the batch data, and see which rows are not present in h_df
+        data = data[columns]
+        data = data[data['hospital_pk'].isin(list(h_df['hospital_pk']))]
+        h_df = h_df.merge(data, on = columns, how = "right" , indicator=True)
+        # whereall the statis values does not exactly match, indicator will say 'right_only'
+        
+        discrepencies_df = h_df[h_df['_merge']=='right_only'].drop(columns=['_merge'])
+        # fix the order of columns to be inline with update query
+        col_order = [x for x in columns if x not in ['hospital_pk']] + ['hospital_pk']
 
-    # ensure that we do not take any row with bizzare hospital_pk value
-    data['valid_pk'] = data["hospital_pk"].\
-        apply(lambda x: True if len(x) <= 6 else False)
-    data = data[data['valid_pk']]
-
-    # convert emergency_services is 'Yes'/'No', convert to boolean
-    data['emergency_services'] = data['emergency_services'].\
-        apply(lambda x: True if x.lower() == 'yes' else False)
-    # hospital_overall_rating is in string, convert it to int
-    data['hospital_overall_rating'] = data['hospital_overall_rating'].\
-        apply(lambda x: int(x) if x.isnumeric() else np.nan)
-
-    # take only columns of ineterest
-    data = data[columns]
-
-    print("CMS data processing complete")
-
-    return data
-
+        # Before inserting values into HospitalQualityDetails, update 
+        # the values for these discrepencies
+        update_values = [
+            (tuple(row[col] for col in col_order))
+            for idx, row in discrepencies_df.iterrows()
+        ]
+        print(update_values)
+        cur.executemany(queries.STATIC_DETAILS_UPDATE_QUERY, update_values)
+        print("Updation Successful for HospitalSpecificData")
+            
 
 def batch_insert_cms_data(conn, data, batch_size=100):
     """
@@ -96,6 +78,8 @@ def batch_insert_cms_data(conn, data, batch_size=100):
     Notes:
     - The function performs the following transformations:
       - Defines SQL insertion queries for insertion.
+      - If any hospital details in the quality data differ from those stored in 
+        HospitalSpecificDetails, the function updates them
       - Inserts rows in 'HospitalQualityDetails' table in batches.
       - Handles ForeignKeyViolation error by first inserting into 'HospitalSpecificDetails'
         if required, and then retries insertion into 'HospitalQualityDetails'.
@@ -105,44 +89,42 @@ def batch_insert_cms_data(conn, data, batch_size=100):
     # Define the SQL query for insertion
     cur = conn.cursor()
 
-    # define insert query for HospitalQualityDetails
-    quality_insert_query = """
-        INSERT INTO HospitalQualityDetails (
-            hospital_pk, last_updated, hospital_overall_rating,
-            hospital_ownership, emergency_services
-        ) VALUES (%s, %s, %s, %s, %s)
-        ON CONFLICT (hospital_pk, last_updated) DO NOTHING;
-    """
+    quality_data_cols = [
+        'hospital_pk',
+        'last_updated',
+        'hospital_overall_rating',
+        'hospital_ownership',
+        'emergency_services'
+    ]
 
-    # define insert query for HospitalSpecificDetails
-    static_insert_query = """
-        INSERT INTO HospitalSpecificDetails (
-            hospital_pk, hospital_name, address, city, zip, state
-        ) VALUES (%s, %s, %s, %s, %s, %s)
-        ON CONFLICT (hospital_pk) DO NOTHING;
-    """
+    static_data_cols = [
+        'hospital_pk',
+        'hospital_name',
+        'address',
+        'city',
+        'zip',
+        'state'
+    ]
 
     # insert rows in HospitalQualityDetails in batches
     for row_index in range(0, len(data), batch_size):
         batch_df = data[row_index:row_index + batch_size]
         print("Running process for batch", (row_index // batch_size) + 1)
-
+        
+        # Check if hospital-specific column in quality data matches 
+        # HospitalSpecificDetails, update if not
+        check_and_update_static_data(conn, batch_df, static_data_cols)
+            
         # Prepare values for insertion in HospitalQualityDetails
         quality_values = [
-            (
-                row['hospital_pk'],
-                row['last_updated'],
-                row['hospital_overall_rating'],
-                row['hospital_ownership'],
-                row['emergency_services']
-                )
+            (tuple(row[col] for col in quality_data_cols))
             for idx, row in batch_df.iterrows()
         ]
+            
         try:
             with conn.transaction():
-                cur.executemany(quality_insert_query, quality_values)
-                print("Insertion successful for HospitalQualityDetails table")
-
+                cur.executemany(queries.HOSPITAL_QUALTIY_DETAILS_INSERT_QUERY, quality_values)
+                print("Insertion successful for HospitalQualityDetails")
         except errors.ForeignKeyViolation:
             # Handle foreign key violation by inserting
             # into HospitalSpecificDetails first
@@ -151,24 +133,18 @@ def batch_insert_cms_data(conn, data, batch_size=100):
 
             # Prepare values for insertion into HospitalSpecificDetails
             static_values = [
-                (
-                    row['hospital_pk'],
-                    row['hospital_name'],
-                    row['address'],
-                    row['city'],
-                    row['zip'],
-                    row['state']
-                    )
+                (tuple(row[col] for col in static_data_cols))
                 for idx, row in batch_df.iterrows()
             ]
+            
             # Insert into HospitalSpecificDetails to resolve FK dependency
             with conn.transaction():
-                cur.executemany(static_insert_query, static_values)
-                print("Insertion successful for HospitalSpecificDetails table")
+                cur.executemany(queries.STATIC_DETAILS_INSERT_QUERY, static_values)
+                print("Insertion successful for HospitalSpecificDetails")
 
             # Reinserting into HospitalQualityDetails after resolving FK error
             with conn.transaction():
-                cur.executemany(quality_insert_query, quality_values)
+                cur.executemany(queries.HOSPITAL_QUALTIY_DETAILS_INSERT_QUERY, quality_values)
                 print("Insertion successful for HospitalQualityDetails")
 
         except Exception as e:
@@ -184,14 +160,11 @@ if __name__ == "__main__":
     file_path = sys.argv[2]
     last_updated = datetime.strptime(sys.argv[1], "%Y-%m-%d").date()
 
-    # last_updated = date(2021,7,1)
-    # file_path = 'data/Hospital_General_Information-2021-07.csv'
-
     data = pd.read_csv(file_path)   
     # insert last_updated column in the data. We get it from sys.args
     data['last_updated'] = last_updated
     
-    processed_data = process_cms_data(data)
+    processed_data = hf.process_cms_data(data)
 
     conn = psycopg.connect(
         host="pinniped.postgres.database.azure.com",
