@@ -86,7 +86,6 @@ def batch_insert_cms_data(conn, data, batch_size=100):
       - Uses 'ON CONFLICT DO NOTHING' to prevent duplicate entries on conflict.
     """
     
-    # Define the SQL query for insertion
     cur = conn.cursor()
 
     quality_data_cols = [
