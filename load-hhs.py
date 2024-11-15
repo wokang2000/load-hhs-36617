@@ -72,7 +72,7 @@ def main():
                                 queries.HOSPITAL_LOGISTICS_INSERT_QUERY,
                                 hospital_logistics_values)
                             print("Successfully inserted batch with "
-                                  f"{BATCH_SIZE} rows into"
+                                  f"{BATCH_SIZE} rows into "
                                   "HospitalLogistics table")
                     except errors.ForeignKeyViolation:
                         print("Foreign key violation encountered.")
@@ -91,7 +91,7 @@ def main():
                                 queries.HOSPITAL_SPECIFIC_DETAILS_INSERT_QUERY,
                                 hospital_specific_details_values)
                             print("Successfully inserted batch with "
-                                  f"{BATCH_SIZE} rows into"
+                                  f"{BATCH_SIZE} rows into "
                                   "HospitalSpecificDetails table")
 
                         with conn.transaction():
@@ -99,7 +99,7 @@ def main():
                                 queries.HOSPITAL_LOGISTICS_INSERT_QUERY,
                                 hospital_logistics_values)
                             print("Successfully inserted batch with "
-                                  f"{BATCH_SIZE} rows into"
+                                  f"{BATCH_SIZE} rows into "
                                   "HospitalLogistics table")
 
     except psycopg.OperationalError as e:
