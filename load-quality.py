@@ -20,7 +20,7 @@ def check_and_update_static_data(conn, data, columns):
     columns (list): List of column to be compared and updated.
 
     Notes:
-    - The function performs the following transformations:
+    - The function performs the following tasks:
       - Reads existing data from the `HospitalSpecificDetails` table based on
         the `hospital_pk` values in the batch.
       - Identifies discrepancies between the batch data and `HospitalSpecificDetails` by performing a join 
