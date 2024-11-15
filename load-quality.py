@@ -33,16 +33,21 @@ def check_and_update_static_data(conn, data, columns):
     data = data.copy()
     # read HospitalSpecificDetails for hospital_pk in qualtiy data batch
     with conn.transaction():
-        params = "'" + "','".join(list(data['hospital_pk'])) + "'"
+        cur = conn.cursor()
 
         # Execute the query with the hospital_pks tuple as a parameter
-        cur = conn.cursor()
-        cur.execute("SELECT hospital_pk,hospital_name,address,city,zip,state "
-                    "FROM HospitalSpecificDetails "
-                    "WHERE hospital_pk IN (" + params + ")")
+        hospital_pks = list(data['hospital_pk'])
+        placeholders = ','.join(['%s'] * len(hospital_pks))
+        static_data_check_query = f"""
+            SELECT hospital_pk, hospital_name, address, city, zip, state
+            FROM HospitalSpecificDetails
+            WHERE hospital_pk IN ({placeholders})
+        """
+        cur.execute(static_data_check_query, (tuple(hospital_pks)))
 
         static_data = cur.fetchall()
         h_df = pd.DataFrame(static_data, columns=columns)
+        print(h_df)
 
         # join h_df with the batch data, and see which rows are not in h_df
         data = data[columns]
