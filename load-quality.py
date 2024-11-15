@@ -30,11 +30,11 @@ def check_and_update_static_data(conn, data, columns):
         `HospitalSpecificDetails` based on `hospital_pk`.
     """
 
+    cur = conn.cursor()
+
     data = data.copy()
     # read HospitalSpecificDetails for hospital_pk in qualtiy data batch
     with conn.transaction():
-        cur = conn.cursor()
-
         # Execute the query with the hospital_pks tuple as a parameter
         hospital_pks = list(data['hospital_pk'])
         placeholders = ','.join(['%s'] * len(hospital_pks))
@@ -47,7 +47,6 @@ def check_and_update_static_data(conn, data, columns):
 
         static_data = cur.fetchall()
         h_df = pd.DataFrame(static_data, columns=columns)
-        print(h_df)
 
         # join h_df with the batch data, and see which rows are not in h_df
         data = data[columns]
@@ -69,6 +68,7 @@ def check_and_update_static_data(conn, data, columns):
         ]
         cur.executemany(queries.STATIC_DETAILS_UPDATE_QUERY, update_values)
         print("Updation Successful for HospitalSpecificData")
+    cur.close()
 
 
 def batch_insert_cms_data(conn, data, batch_size=100):
@@ -161,6 +161,8 @@ def batch_insert_cms_data(conn, data, batch_size=100):
         except Exception as e:
             print(f"Error in batch {(row_index // batch_size) + 1}: {e}")
 
+    cur.close()
+
 
 if __name__ == "__main__":
     if len(sys.argv) != 3:
@@ -188,3 +190,5 @@ if __name__ == "__main__":
     batch_size = 100
 
     batch_insert_cms_data(conn, processed_data, batch_size)
+
+    conn.close()
