@@ -48,7 +48,7 @@ def check_and_update_static_data(conn, data, columns):
         data = data[columns]
         data = data[data['hospital_pk'].isin(list(h_df['hospital_pk']))]
         h_df = h_df.merge(data, on = columns, how = "right" , indicator=True)
-        # whereall the statis values does not exactly match, indicator will say 'right_only'
+        # whereall the static values does not exactly match, indicator will say 'right_only'
         
         discrepencies_df = h_df[h_df['_merge']=='right_only'].drop(columns=['_merge'])
         # fix the order of columns to be inline with update query
