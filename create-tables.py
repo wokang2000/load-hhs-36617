@@ -29,11 +29,12 @@ def main():
         print(f"Database error occurred: {e}")
 
     except Exception as e:
-        print(f"An error occurred: {e}") 
+        print(f"An error occurred: {e}")
 
     finally:
         cur.close()
         conn.close()
+
 
 if __name__ == "__main__":
     main()
