@@ -63,7 +63,7 @@ def main():
                     ]
 
                     hospital_logistics_values =\
-                        [(row[col] for col in hospital_logistics_columns)
+                        [tuple(row[col] for col in hospital_logistics_columns)
                             for _, row in batch_df.iterrows()]
 
                     try:
@@ -71,8 +71,9 @@ def main():
                             cur.executemany(
                                 queries.HOSPITAL_LOGISTICS_INSERT_QUERY,
                                 hospital_logistics_values)
-                            print("Successfully inserted batch\
-                                  into HospitalLogistics table")
+                            print("Successfully inserted batch with "
+                                  f"{BATCH_SIZE} rows into"
+                                  "HospitalLogistics table")
                     except errors.ForeignKeyViolation:
                         print("Foreign key violation encountered.")
                         print("Inserting into HospitalSpecificDetails.")
@@ -89,15 +90,17 @@ def main():
                             cur.executemany(
                                 queries.HOSPITAL_SPECIFIC_DETAILS_INSERT_QUERY,
                                 hospital_specific_details_values)
-                            print("Successfully inserted batch into \
-                                  HospitalSpecificDetails table")
+                            print("Successfully inserted batch with "
+                                  f"{BATCH_SIZE} rows into"
+                                  "HospitalSpecificDetails table")
 
                         with conn.transaction():
                             cur.executemany(
                                 queries.HOSPITAL_LOGISTICS_INSERT_QUERY,
                                 hospital_logistics_values)
-                            print("Successfully inserted batch into \
-                                  HospitalLogistics table")
+                            print("Successfully inserted batch with "
+                                  f"{BATCH_SIZE} rows into"
+                                  "HospitalLogistics table")
 
     except psycopg.OperationalError as e:
         print("Database connection error:", e)
