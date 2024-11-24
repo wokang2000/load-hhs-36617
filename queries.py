@@ -7,8 +7,7 @@ HospitalLogistics and HospitalSpecificDetails tables in the hospital database.
 
 HOSPITAL_LOGISTICS_CREATE_QUERY = """
 CREATE TABLE IF NOT EXISTS HospitalLogistics (
-    hospital_pk TEXT PRIMARY KEY
-        REFERENCES HospitalSpecificDetails (hospital_pk),
+    hospital_pk TEXT REFERENCES HospitalSpecificDetails(hospital_pk),
     collection_week DATE CHECK (collection_week <= CURRENT_DATE::DATE),
     all_adult_hospital_beds_7_day_avg NUMERIC
         CHECK (all_adult_hospital_beds_7_day_avg >= 0),
@@ -23,7 +22,8 @@ CREATE TABLE IF NOT EXISTS HospitalLogistics (
     inpatient_beds_used_covid_7_day_avg NUMERIC
         CHECK (inpatient_beds_used_covid_7_day_avg >= 0),
     staffed_icu_adult_patients_confirmed_covid_7_day_avg NUMERIC
-        CHECK (staffed_icu_adult_patients_confirmed_covid_7_day_avg >= 0)
+        CHECK (staffed_icu_adult_patients_confirmed_covid_7_day_avg >= 0),
+    PRIMARY KEY (hospital_pk, collection_week)
 );
 """
 
