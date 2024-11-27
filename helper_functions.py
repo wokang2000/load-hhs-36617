@@ -1,6 +1,5 @@
 import pandas as pd
 import re
-import numpy as np
 
 
 def extract_coordinates(point_str):
@@ -86,9 +85,9 @@ def process_hhs_data(data):
     ]
     for column in invalid_value_columns:
         data[column] = data[column].\
-            apply(lambda x: np.nan if x in ['NA', -999999] else x)
+            apply(lambda x: None if x in ['NA', -999999] else x)
         data[column] = data[column].\
-            apply(lambda x: np.nan if x < 0 else x)
+            apply(lambda x: None if x < 0 else x)
 
     # Ensure 'state' values are two-letter alphabetical codes
     data['state'] = data['state'].\
@@ -176,7 +175,7 @@ def process_cms_data(data):
         apply(lambda x: True if x.lower() == 'yes' else False)
     # hospital_overall_rating is in string, convert it to int
     data['hospital_overall_rating'] = data['hospital_overall_rating'].\
-        apply(lambda x: int(x) if x.isnumeric() else np.nan)
+        apply(lambda x: int(x) if x.isnumeric() else None)
     # convert zip to string
     data['zip'] = data['zip'].apply(lambda x: str(x))
 

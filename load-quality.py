@@ -179,6 +179,10 @@ if __name__ == "__main__":
     data['last_updated'] = last_updated
 
     processed_data = hf.process_cms_data(data)
+    # TODO: Ananya review this
+    processed_data = processed_data.astype(str)
+    processed_data = processed_data.\
+        applymap(lambda x: None if x == 'nan' else x)
 
     conn = psycopg.connect(
         host="pinniped.postgres.database.azure.com",

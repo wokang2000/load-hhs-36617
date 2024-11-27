@@ -34,6 +34,9 @@ def main():
 
     csv_file = sys.argv[1]
     data = load_data(csv_file)
+    # TODO: Ananya review this
+    data = data.astype(str)
+    data = data.applymap(lambda x: None if x == 'nan' else x)
 
     try:
         with psycopg.connect(
