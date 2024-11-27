@@ -142,13 +142,11 @@ if __name__ == "__main__":
     # Display Report 3 on dashboard
     st.write("## Hospital Bed Usage by Quality Rating")
 
-    fig, ax = plt.subplots(figsize=(5, 2))
+    fig, ax = plt.subplots(figsize=(4, 1.5))
 
-    # line or bar, whatevery we want plot
-    
+    # line or bar, whatever we want plot
     df_rpt_3.plot(kind="line", x="Quality Rating", y=["Average Adult Bed Usage", "Average Pediatric Bed Usage"], ax=ax)
 
-    # Title and labels
     plt.title("Average Bed Usage by Hospital Quality Rating", fontsize=4)
     plt.xlabel("Quality Rating", fontsize=4)
     plt.ylabel("Average Bed Usage Fraction", fontsize=4)
@@ -157,7 +155,6 @@ if __name__ == "__main__":
     plt.yticks(fontsize=4)
     plt.tight_layout()
 
-    # Display the plot in Streamlit
     st.pyplot(fig)
     # ------------------------------ Report 3 ---------------------------------
     
