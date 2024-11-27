@@ -8,7 +8,6 @@ import matplotlib.pyplot as plt
 # Set page configuration to wide mode
 st.set_page_config(
     page_title="Hospital Logistics Dashboard",
-    page_icon="🏥",
     layout="wide"
 )
 
@@ -75,20 +74,25 @@ if __name__ == "__main__":
     # Query execution
     q_rpt_2 = """
     WITH WeeklySummary AS (
-        SELECT 
+        SELECT
             collection_week,
-            SUM(COALESCE(all_adult_hospital_beds_7_day_avg, 0)) AS total_adult_beds,
-            SUM(COALESCE(all_pediatric_inpatient_beds_7_day_avg, 0)) AS total_pediatric_beds,
-            SUM(COALESCE(all_adult_hospital_inpatient_bed_occupied_7_day_avg, 0)) AS adult_beds_used,
-            SUM(COALESCE(all_pediatric_inpatient_bed_occupied_7_day_avg, 0)) AS pediatric_beds_used,
-            SUM(COALESCE(inpatient_beds_used_covid_7_day_avg, 0)) AS beds_used_by_covid
+            SUM(COALESCE(all_adult_hospital_beds_7_day_avg, 0))
+            AS total_adult_beds,
+            SUM(COALESCE(all_pediatric_inpatient_beds_7_day_avg, 0))
+            AS total_pediatric_beds,
+            SUM(COALESCE(all_adult_hospital_inpatient_bed_occupied_7_day_avg,
+            0)) AS adult_beds_used,
+            SUM(COALESCE(all_pediatric_inpatient_bed_occupied_7_day_avg, 0))
+            AS pediatric_beds_used,
+            SUM(COALESCE(inpatient_beds_used_covid_7_day_avg, 0))
+            AS beds_used_by_covid
         FROM HospitalLogistics
         WHERE collection_week <= %(selected_week)s
         AND collection_week > %(selected_week)s - INTERVAL '4 weeks'
         GROUP BY collection_week
         ORDER BY collection_week DESC
     )
-    SELECT 
+    SELECT
         collection_week AS Week,
         total_adult_beds AS "Total Adult Beds",
         adult_beds_used AS "Adult Beds Used",
@@ -109,30 +113,34 @@ if __name__ == "__main__":
     # ------------------------------ Report 3 ---------------------------------
     q_rpt_3 = """
     WITH BedUsage AS (
-        SELECT 
+        SELECT
             hq.hospital_pk,
             hq.hospital_overall_rating,
-            SUM(hl.all_adult_hospital_inpatient_bed_occupied_7_day_avg) / NULLIF(SUM(hl.all_adult_hospital_beds_7_day_avg), 0) AS adult_bed_usage_fraction,
-            SUM(hl.all_pediatric_inpatient_bed_occupied_7_day_avg) / NULLIF(SUM(hl.all_pediatric_inpatient_beds_7_day_avg), 0) AS pediatric_bed_usage_fraction
-        FROM 
+            SUM(hl.all_adult_hospital_inpatient_bed_occupied_7_day_avg)/
+            NULLIF(SUM(hl.all_adult_hospital_beds_7_day_avg), 0)
+            AS adult_bed_usage_fraction,
+            SUM(hl.all_pediatric_inpatient_bed_occupied_7_day_avg)/
+            NULLIF(SUM(hl.all_pediatric_inpatient_beds_7_day_avg), 0)
+            AS pediatric_bed_usage_fraction
+        FROM
             HospitalLogistics hl
-        JOIN 
-            HospitalQualityDetails hq 
+        JOIN
+            HospitalQualityDetails hq
             ON hl.hospital_pk = hq.hospital_pk
-        WHERE 
+        WHERE
             hl.collection_week = %(selected_week)s
-        GROUP BY 
+        GROUP BY
             hq.hospital_pk, hq.hospital_overall_rating
     )
-    SELECT 
+    SELECT
         hospital_overall_rating AS "Quality Rating",
         AVG(adult_bed_usage_fraction) AS "Average Adult Bed Usage",
         AVG(pediatric_bed_usage_fraction) AS "Average Pediatric Bed Usage"
-    FROM 
+    FROM
         BedUsage
     GROUP BY
         hospital_overall_rating
-    ORDER BY 
+    ORDER BY
         "Quality Rating";
     """
 
@@ -145,19 +153,21 @@ if __name__ == "__main__":
     fig, ax = plt.subplots(figsize=(4, 1.5))
 
     # line or bar, whatever we want plot
-    df_rpt_3.plot(kind="line", x="Quality Rating", y=["Average Adult Bed Usage", "Average Pediatric Bed Usage"], ax=ax)
+    df_rpt_3.plot(kind="line", x="Quality Rating",
+                  y=["Average Adult Bed Usage", "Average Pediatric Bed Usage"],
+                  ax=ax)
 
     plt.title("Average Bed Usage by Hospital Quality Rating", fontsize=4)
     plt.xlabel("Quality Rating", fontsize=4)
     plt.ylabel("Average Bed Usage Fraction", fontsize=4)
-    plt.legend(fontsize=3)
+    plt.legend(fontsize=5)
     plt.xticks(rotation=0, fontsize=4)
     plt.yticks(fontsize=4)
     plt.tight_layout()
 
     st.pyplot(fig)
     # ------------------------------ Report 3 ---------------------------------
-    
+
     # ------------------------------ Report 4 ---------------------------------
-    
+
     # ------------------------------ Report 4 ---------------------------------
