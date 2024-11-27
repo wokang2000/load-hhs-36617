@@ -3,6 +3,7 @@ import pandas as pd
 import psycopg
 import credentials
 import matplotlib.pyplot as plt
+from datetime import datetime, date
 
 
 # Set page configuration to wide mode
@@ -169,5 +170,50 @@ if __name__ == "__main__":
     # ------------------------------ Report 3 ---------------------------------
 
     # ------------------------------ Report 4 ---------------------------------
+    q_rpt_4 = """
+    WITH BedUsage AS (
+        SELECT
+            collection_week,
+            SUM(all_adult_hospital_inpatient_bed_occupied_7_day_avg) +
+            SUM(all_pediatric_inpatient_bed_occupied_7_day_avg) AS total_beds_used,
+            SUM(inpatient_beds_used_covid_7_day_avg) AS covid_beds_used
+        FROM HospitalLogistics
+        WHERE collection_week <= %(selected_week)s
+        GROUP BY collection_week
+        ORDER BY collection_week
+    )
+    SELECT 
+        collection_week AS "Week",
+        total_beds_used AS "Total Beds Usage",
+        covid_beds_used AS "COVID Beds Usage",
+        (total_beds_used - covid_beds_used) AS "Non-COVID Beds Usage"
+    FROM BedUsage
+    ORDER BY "Week";
+    """
 
+    parameters = {'selected_week': selected_week}
+    df_rpt_4 = pd.read_sql_query(q_rpt_4, conn, params=parameters)
+
+    # Display Report 3 on dashboard
+    st.write("## Total Hospital Beds Used Per Week: COVID vs Non-COVID")
+
+    fig, ax = plt.subplots(figsize=(10, 2.5))
+
+    print(df_rpt_4)
+
+    # Plot total beds used, COVID beds used
+    # problem: covid bed used is very very less compared to total beds
+    ax.plot(df_rpt_4['Week'], df_rpt_4['Total Beds Usage'], label='Total Beds Used', color='blue')
+    ax.plot(df_rpt_4['Week'], df_rpt_4['COVID Beds Usage'], label='COVID Beds Used', color='green')
+
+    # Titles and labels
+    plt.title('Hospital Beds Usage per Week', fontsize=10)
+    plt.xlabel('Week', fontsize=10)
+    plt.ylabel('Number of Beds Used', fontsize=10)
+    plt.legend(fontsize=6)
+    plt.xticks(rotation=0, fontsize=6)
+    plt.yticks(fontsize=6)
+    plt.tight_layout()
+
+    st.pyplot(fig)
     # ------------------------------ Report 4 ---------------------------------
