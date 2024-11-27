@@ -117,7 +117,7 @@ def batch_insert_cms_data(conn, data, batch_size=100):
         batch_df = data[row_index:row_index + batch_size]
         print("Running process for batch", (row_index // batch_size) + 1)
         print("Number of rows in batch ", (row_index // batch_size) + 1,
-              batch_size)
+              len(batch_df))
 
         # Check if hospital-specific column in quality data matches
         # HospitalSpecificDetails, update if not

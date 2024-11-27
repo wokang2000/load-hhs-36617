@@ -40,7 +40,7 @@ INSERT INTO HospitalLogistics (
     inpatient_beds_used_covid_7_day_avg,
     staffed_icu_adult_patients_confirmed_covid_7_day_avg
 ) VALUES (%s, CAST(%s AS DATE), %s, %s, %s, %s, %s, %s, %s, %s)
-ON CONFLICT (hospital_pk) DO NOTHING;
+ON CONFLICT (hospital_pk, collection_week) DO NOTHING;
 """
 
 # Hospital Specific Details Queries
@@ -78,7 +78,7 @@ HOSPITAL_QUALITY_DETAILS_CREATE_QUERY = """
 CREATE TABLE IF NOT EXISTS HospitalQualityDetails (
   hospital_pk TEXT REFERENCES HospitalSpecificDetails(hospital_pk),
   last_updated DATE CHECK (last_updated <= CURRENT_DATE),
-  hospital_overall_rating INTEGER,
+  hospital_overall_rating NUMERIC,
   hospital_ownership TEXT,
   emergency_services BOOLEAN,
   PRIMARY KEY (hospital_pk, last_updated)

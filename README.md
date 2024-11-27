@@ -76,12 +76,12 @@ python load-hhs.py 2022-09-23-hhs-data.csv
 ```
 
 ### 3. `load-quality.py`
-This script loads Hospital Quality data into the `HospitalQualityDetails` table. It takes a single argument: the file path to the CSV file containing the quality data.
+This script loads Hospital Quality data into the `HospitalQualityDetails` table. It takes two arguments: date for which the quality data is updated and the file path to the CSV file containing the quality data.
 
 
 This can be run like this:
   ```python
-python load-quality.py Hospital_General_Information-2021-07
+python load-quality.py 2021-07-01 Hospital_General_Information-2021-07
 ```
 
 ## Setup Instructions
