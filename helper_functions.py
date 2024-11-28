@@ -65,7 +65,9 @@ def process_hhs_data(data):
       - Extracts longitude and latitude from 'geocoded_hospital_address'.
     """
     # Filter rows where 'hospital_pk' is 6 characters long
+    invalid_rows = data[data['hospital_pk'].str.len() != 6].index
     data = data[data['hospital_pk'].str.len() == 6]
+    print(f"Removing rows: {invalid_rows} with invalid primary keys")
 
     # Convert 'collection_week' to datetime and retain only the date part
     data['collection_week'] = \
@@ -174,7 +176,7 @@ def process_cms_data(data):
 
     data = data[data['valid_pk']]
 
-    # convert emergency_services is 'Yes'/'No', convert to Boolean
+    # convert emergency_services is 'Yes'/'No', convert to boolean
     data['emergency_services'] = data['emergency_services'].\
         apply(lambda x: True if x.lower() == 'yes' else False)
     # hospital_overall_rating is in string, convert it to int
