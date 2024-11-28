@@ -69,6 +69,14 @@ def process_hhs_data(data):
     data = data[data['hospital_pk'].str.len() == 6]
     print(f"Removing rows: {invalid_rows} with invalid primary keys")
 
+    # Filter rows where total beds < used beds
+    invalid_rows = data[data['total_icu_beds_7_day_avg']
+                        < data['icu_beds_used_7_day_avg']].index
+    data = data[data['total_icu_beds_7_day_avg']
+                >= data['icu_beds_used_7_day_avg']]
+    print(f"Removing rows: {invalid_rows}\
+           where there are more reported beds used than in total")
+
     # Convert 'collection_week' to datetime and retain only the date part
     data['collection_week'] = \
         pd.to_datetime(data['collection_week'], errors='coerce').\
