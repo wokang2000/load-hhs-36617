@@ -11,7 +11,7 @@ BATCH_SIZE = 1000
 
 # logging configuration
 logging.basicConfig(
-    filename='data_loading.log',
+    filename='hhs_data_loading.log',
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
