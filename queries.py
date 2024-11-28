@@ -23,7 +23,10 @@ CREATE TABLE IF NOT EXISTS HospitalLogistics (
         CHECK (inpatient_beds_used_covid_7_day_avg >= 0),
     staffed_icu_adult_patients_confirmed_covid_7_day_avg NUMERIC
         CHECK (staffed_icu_adult_patients_confirmed_covid_7_day_avg >= 0),
-    PRIMARY KEY (hospital_pk, collection_week)
+    PRIMARY KEY (hospital_pk, collection_week),
+    CONSTRAINT check_total_beds_greater_than_used_beds CHECK (
+       total_icu_beds_7_day_avg >= icu_beds_used_7_day_avg
+    )
 );
 """
 
