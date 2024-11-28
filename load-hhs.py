@@ -55,7 +55,6 @@ def main():
     csv_file = sys.argv[1]
     try:
         data = load_data(csv_file)
-        # TODO: Ananya review this
         data = data.astype(str)
         data = data.applymap(lambda x: None if x == 'nan' else x)
     except Exception as e:

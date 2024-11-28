@@ -6,6 +6,14 @@ from datetime import datetime
 from psycopg import errors
 import queries
 import helper_functions as hf
+import logging
+
+# Set up logging
+logging.basicConfig(
+    filename='cms_data_loading.log',
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
 
 
 def check_and_update_static_data(conn, data, columns):
@@ -67,7 +75,7 @@ def check_and_update_static_data(conn, data, columns):
             for idx, row in discrepencies_df.iterrows()
         ]
         cur.executemany(queries.STATIC_DETAILS_UPDATE_QUERY, update_values)
-        print("Updation Successful for HospitalSpecificData")
+        logging.info("Updation Successful for HospitalSpecificData")
     cur.close()
 
 
@@ -115,9 +123,10 @@ def batch_insert_cms_data(conn, data, batch_size=100):
     # insert rows in HospitalQualityDetails in batches
     for row_index in range(0, len(data), batch_size):
         batch_df = data[row_index:row_index + batch_size]
-        print("Running process for batch", (row_index // batch_size) + 1)
-        print("Number of rows in batch ", (row_index // batch_size) + 1,
-              len(batch_df))
+        logging.info("Running process for batch "
+                     f"{(row_index // batch_size) + 1}")
+        logging.info("Number of rows in batch "
+                     f"{(row_index // batch_size) + 1}: {len(batch_df)}")
 
         # Check if hospital-specific column in quality data matches
         # HospitalSpecificDetails, update if not
@@ -133,12 +142,12 @@ def batch_insert_cms_data(conn, data, batch_size=100):
             with conn.transaction():
                 cur.executemany(queries.HOSPITAL_QUALTIY_DETAILS_INSERT_QUERY,
                                 quality_values)
-                print("Insertion successful for HospitalQualityDetails")
+                logging.info("Insertion successful for HospitalQualityDetails")
         except errors.ForeignKeyViolation:
             # Handle foreign key violation by inserting
             # into HospitalSpecificDetails first
-            print("Foreign key violation encountered")
-            print("Inserting into HospitalSpecificDetails.")
+            logging.warning("Foreign key violation encountered")
+            logging.info("Inserting into HospitalSpecificDetails.")
 
             # Prepare values for insertion into HospitalSpecificDetails
             static_values = [
@@ -150,23 +159,26 @@ def batch_insert_cms_data(conn, data, batch_size=100):
             with conn.transaction():
                 cur.executemany(queries.STATIC_DETAILS_INSERT_QUERY,
                                 static_values)
-                print("Insertion successful for HospitalSpecificDetails")
+                logging.info("Insertion successful "
+                             "for HospitalSpecificDetails")
 
             # Reinserting into HospitalQualityDetails after resolving FK error
             with conn.transaction():
                 cur.executemany(queries.HOSPITAL_QUALTIY_DETAILS_INSERT_QUERY,
                                 quality_values)
-                print("Insertion successful for HospitalQualityDetails")
+                logging.info("Insertion successful for HospitalQualityDetails")
 
         except Exception as e:
-            print(f"Error in batch {(row_index // batch_size) + 1}: {e}")
+            logging.error(f"Error in batch {(row_index // batch_size) + 1}: "
+                          f"{e}")
 
     cur.close()
 
 
 if __name__ == "__main__":
     if len(sys.argv) != 3:
-        print("Usage: load-quality.py <last_updated> <file_path> ")
+        logging.error("Usage: load-quality.py <last_updated> <file_path>")
+        print("Usage: load-quality.py <last_updated> <file_path>")
         sys.exit(1)
 
     # Get file path and last_updated date from command-line arguments
@@ -174,15 +186,14 @@ if __name__ == "__main__":
     last_updated = datetime.strptime(sys.argv[1], "%Y-%m-%d").date()
 
     data = pd.read_csv(file_path)
-    print("Data has ", len(data), " rows in total")
-    # insert last_updated column in the data. We get it from sys.args
+    logging.info(f"Data has {len(data)} rows in total")
+
     data['last_updated'] = last_updated
 
     processed_data = hf.process_cms_data(data)
-    # TODO: Ananya review this
     processed_data = processed_data.astype(str)
-    processed_data = processed_data.\
-        applymap(lambda x: None if x == 'nan' else x)
+    processed_data = processed_data\
+        .applymap(lambda x: None if x == 'nan' else x)
 
     conn = psycopg.connect(
         host="pinniped.postgres.database.azure.com",
@@ -196,3 +207,4 @@ if __name__ == "__main__":
     batch_insert_cms_data(conn, processed_data, batch_size)
 
     conn.close()
+    logging.info("Database connection closed.")
