@@ -165,9 +165,13 @@ def process_cms_data(data):
 
     # data transformtions
 
-    # ensure that we do not take any row with bizzare hospital_pk value
+    # ensure that we do not take any row with bizarre hospital_pk value
     data['valid_pk'] = data["hospital_pk"].\
         apply(lambda x: True if len(x) <= 6 else False)
+    invalid_rows = data[data["hospital_pk"].apply(lambda x: len(x) > 6)].index
+
+    print(f"Removing rows: {invalid_rows} with invalid primary keys")
+
     data = data[data['valid_pk']]
 
     # convert emergency_services is 'Yes'/'No', convert to boolean
