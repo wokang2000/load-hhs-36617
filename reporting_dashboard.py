@@ -259,3 +259,49 @@ if __name__ == "__main__":
     st.write("10 States with Largest Increase in COVID Cases")
     st.dataframe(df_rpt_5.head(10), use_container_width=True)
     # ------------------------------ Report 5 ---------------------------------
+    q_rpt_6 = """
+    WITH WeeklyCases AS (
+        SELECT
+            hospital_name,
+            city,
+            collection_week,
+            SUM(inpatient_beds_used_covid_7_day_avg) AS covid_beds
+        FROM HospitalLogistics
+        JOIN HospitalSpecificDetails
+        ON HospitalSpecificDetails.hospital_pk = HospitalLogistics.hospital_pk
+        WHERE collection_week IN (%(selected_week)s, %(previous_week)s)
+        GROUP BY hospital_name, city, collection_week
+    ),
+    ChangeInCases AS (
+        SELECT
+            current.hospital_name,
+            current.city,
+            current.covid_beds AS covid_beds_this_week,
+            COALESCE(previous.covid_beds, 0) AS covid_beds_last_week,
+            ABS(current.covid_beds - COALESCE(previous.covid_beds, 0)) AS cases_difference
+        FROM
+            (SELECT * FROM WeeklyCases WHERE collection_week = %(selected_week)s) current
+        LEFT JOIN
+            (SELECT * FROM WeeklyCases WHERE collection_week = %(previous_week)s) previous
+        ON current.hospital_name = previous.hospital_name
+        AND current.city = previous.city
+    )
+    SELECT
+        hospital_name,
+        city,
+        covid_beds_this_week,
+        covid_beds_last_week,
+        cases_difference
+    FROM ChangeInCases
+    ORDER BY cases_difference DESC
+    LIMIT 10;
+    """
+    parameters = {'selected_week': selected_week,
+                  'previous_week': selected_week - timedelta(weeks=1)}
+
+    df_rpt_6 = pd.read_sql_query(q_rpt_6, conn, params=parameters)
+    df_rpt_6.index = df_rpt_6.index + 1
+
+    st.write("10 Hospitals with Biggest Weekly Difference in COVID Cases")
+    st.dataframe(df_rpt_6.head(10), use_container_width=True)
+    # ------------------------------ Report 6 ---------------------------------
