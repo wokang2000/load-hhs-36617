@@ -43,7 +43,7 @@ INSERT INTO HospitalLogistics (
     inpatient_beds_used_covid_7_day_avg,
     staffed_icu_adult_patients_confirmed_covid_7_day_avg
 ) VALUES (%s, CAST(%s AS DATE), %s, %s, %s, %s, %s, %s, %s, %s)
-ON CONFLICT (hospital_pk, collection_week) DO NOTHING;
+ON CONFLICT (hospital_pk) DO NOTHING;
 """
 
 # Hospital Specific Details Queries

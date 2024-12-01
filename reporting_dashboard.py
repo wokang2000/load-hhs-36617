@@ -3,7 +3,7 @@ import pandas as pd
 import psycopg
 import credentials
 import matplotlib.pyplot as plt
-from datetime import datetime, date
+from datetime import timedelta
 
 
 # Set page configuration to wide mode
@@ -217,3 +217,45 @@ if __name__ == "__main__":
 
     st.pyplot(fig)
     # ------------------------------ Report 4 ---------------------------------
+    q_rpt_5 = """
+    WITH WeeklyCases AS (
+    SELECT
+        SUBSTRING(CAST(fips_code AS TEXT), 1, 2) AS state,
+        collection_week,
+        SUM(inpatient_beds_used_covid_7_day_avg) AS covid_beds
+    FROM HospitalLogistics
+    JOIN HospitalSpecificDetails
+    ON HospitalSpecificDetails.hospital_pk = HospitalLogistics.hospital_pk
+    WHERE collection_week IN (%(selected_week)s, %(previous_week)s)
+    GROUP BY state, fips_code, collection_week
+    ),
+    ChangeInCases AS (
+        SELECT
+            current.state,
+            current.covid_beds AS covid_beds_this_week,
+            COALESCE(previous.covid_beds, 0) AS covid_beds_last_week,
+            (current.covid_beds - COALESCE(previous.covid_beds, 0)) AS increase_in_cases
+        FROM
+            (SELECT * FROM WeeklyCases WHERE collection_week = %(selected_week)s) current
+        LEFT JOIN
+            (SELECT * FROM WeeklyCases WHERE collection_week = %(previous_week)s) previous
+        ON current.state = previous.state
+    )
+    SELECT
+        state,
+        covid_beds_this_week,
+        covid_beds_last_week,
+        increase_in_cases
+    FROM ChangeInCases
+    ORDER BY increase_in_cases DESC;
+    """
+    parameters = {'selected_week': selected_week,
+                  'previous_week': selected_week - timedelta(weeks=1)}
+
+    df_rpt_5 = pd.read_sql_query(q_rpt_5, conn, params=parameters)
+    df_rpt_5.index = df_rpt_5.index + 1
+
+    # TODO: Change col names and match state names to first 2 FIPS code digits
+    st.write("10 States with Largest Increase in COVID Cases")
+    st.dataframe(df_rpt_5.head(10), use_container_width=True)
+    # ------------------------------ Report 5 ---------------------------------
