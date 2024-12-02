@@ -328,11 +328,12 @@ if __name__ == "__main__":
     WITH MostRecentReporting AS (
     SELECT
         hospital_name,
+        hl.hospital_pk,
         MAX(collection_week) as most_recent_date
     FROM HospitalLogistics AS hl
     JOIN HospitalSpecificDetails AS hs
     ON hl.hospital_pk = hs.hospital_pk
-    GROUP BY hospital_name
+    GROUP BY hospital_name, hl.hospital_pk
     ),
     NotReportedLastWeek AS (
     SELECT
@@ -344,7 +345,7 @@ if __name__ == "__main__":
         FROM HospitalLogistics hl
         -- TODO: should this be previous_week or selected week?
         WHERE hl.collection_week = %(previous_week)s
-        AND hl.hospital_name = mr.hospital_name
+        AND hl.hospital_pk = mr.hospital_pk
     )
     )
     SELECT
@@ -360,4 +361,6 @@ if __name__ == "__main__":
     df_rpt_7.index = df_rpt_7.index + 1
 
     st.write("## Hospitals That Did Not Report Data For Selected Week")
+    st.dataframe(df_rpt_7, use_container_width=True)
+
     # ------------------------------ Report 7 ---------------------------------
