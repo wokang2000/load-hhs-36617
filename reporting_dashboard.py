@@ -5,6 +5,9 @@ import credentials
 import matplotlib.pyplot as plt
 from datetime import timedelta
 
+# TODO: set df indexes to start with 1, more intuitive
+# TODO: Change Report 5, 6, 7 to report data for last week not selected week
+# TODO: Experiment with fun layouts
 
 # Set page configuration to wide mode
 st.set_page_config(
@@ -175,14 +178,15 @@ if __name__ == "__main__":
         SELECT
             collection_week,
             SUM(all_adult_hospital_inpatient_bed_occupied_7_day_avg) +
-            SUM(all_pediatric_inpatient_bed_occupied_7_day_avg) AS total_beds_used,
+            SUM(all_pediatric_inpatient_bed_occupied_7_day_avg)
+                AS total_beds_used,
             SUM(inpatient_beds_used_covid_7_day_avg) AS covid_beds_used
         FROM HospitalLogistics
         WHERE collection_week <= %(selected_week)s
         GROUP BY collection_week
         ORDER BY collection_week
     )
-    SELECT 
+    SELECT
         collection_week AS "Week",
         total_beds_used AS "Total Beds Usage",
         covid_beds_used AS "COVID Beds Usage",
@@ -203,8 +207,10 @@ if __name__ == "__main__":
 
     # Plot total beds used, COVID beds used
     # problem: covid bed used is very very less compared to total beds
-    ax.plot(df_rpt_4['Week'], df_rpt_4['Total Beds Usage'], label='Total Beds Used', color='blue')
-    ax.plot(df_rpt_4['Week'], df_rpt_4['COVID Beds Usage'], label='COVID Beds Used', color='green')
+    ax.plot(df_rpt_4['Week'], df_rpt_4['Total Beds Usage'],
+            label='Total Beds Used', color='blue')
+    ax.plot(df_rpt_4['Week'], df_rpt_4['COVID Beds Usage'],
+            label='COVID Beds Used', color='green')
 
     # Titles and labels
     plt.title('Hospital Beds Usage per Week', fontsize=10)
@@ -234,11 +240,17 @@ if __name__ == "__main__":
             current.state,
             current.covid_beds AS covid_beds_this_week,
             COALESCE(previous.covid_beds, 0) AS covid_beds_last_week,
-            (current.covid_beds - COALESCE(previous.covid_beds, 0)) AS increase_in_cases
+            (current.covid_beds - COALESCE(previous.covid_beds, 0))
+                AS increase_in_cases
         FROM
-            (SELECT * FROM WeeklyCases WHERE collection_week = %(selected_week)s) current
+            (
+            SELECT *
+            FROM WeeklyCases
+            WHERE collection_week = %(selected_week)s) current
         LEFT JOIN
-            (SELECT * FROM WeeklyCases WHERE collection_week = %(previous_week)s) previous
+            (SELECT *
+            FROM WeeklyCases
+            WHERE collection_week = %(previous_week)s) previous
         ON current.state = previous.state
     )
     SELECT
@@ -256,7 +268,7 @@ if __name__ == "__main__":
     df_rpt_5.index = df_rpt_5.index + 1
 
     # TODO: Change col names and match state names to first 2 FIPS code digits
-    st.write("10 States with Largest Increase in COVID Cases")
+    st.write("## 10 States with Largest Increase in COVID Cases")
     st.dataframe(df_rpt_5.head(10), use_container_width=True)
     # ------------------------------ Report 5 ---------------------------------
     q_rpt_6 = """
@@ -278,11 +290,18 @@ if __name__ == "__main__":
             current.city,
             current.covid_beds AS covid_beds_this_week,
             COALESCE(previous.covid_beds, 0) AS covid_beds_last_week,
-            ABS(current.covid_beds - COALESCE(previous.covid_beds, 0)) AS cases_difference
+            ABS(current.covid_beds - COALESCE(previous.covid_beds, 0))
+                AS cases_difference
         FROM
-            (SELECT * FROM WeeklyCases WHERE collection_week = %(selected_week)s) current
+            (
+            SELECT *
+            FROM WeeklyCases
+            WHERE collection_week = %(selected_week)s) current
         LEFT JOIN
-            (SELECT * FROM WeeklyCases WHERE collection_week = %(previous_week)s) previous
+            (
+            SELECT *
+            FROM WeeklyCases
+            WHERE collection_week = %(previous_week)s) previous
         ON current.hospital_name = previous.hospital_name
         AND current.city = previous.city
     )
@@ -302,6 +321,43 @@ if __name__ == "__main__":
     df_rpt_6 = pd.read_sql_query(q_rpt_6, conn, params=parameters)
     df_rpt_6.index = df_rpt_6.index + 1
 
-    st.write("10 Hospitals with Biggest Weekly Difference in COVID Cases")
+    st.write("## 10 Hospitals with Biggest Weekly Difference in COVID Cases")
     st.dataframe(df_rpt_6.head(10), use_container_width=True)
     # ------------------------------ Report 6 ---------------------------------
+    q_rpt_7 = """
+    WITH MostRecentReporting AS (
+    SELECT
+        hospital_name,
+        MAX(collection_week) as most_recent_date
+    FROM HospitalLogistics AS hl
+    JOIN HospitalSpecificDetails AS hs
+    ON hl.hospital_pk = hs.hospital_pk
+    GROUP BY hospital_name
+    ),
+    NotReportedLastWeek AS (
+    SELECT
+        mr.hospital_name,
+        mr.most_recent_date
+    FROM MostRecentReporting mr
+    WHERE NOT EXISTS (
+        SELECT 1
+        FROM HospitalLogistics hl
+        -- TODO: should this be previous_week or selected week?
+        WHERE hl.collection_week = %(previous_week)s
+        AND hl.hospital_name = mr.hospital_name
+    )
+    )
+    SELECT
+        hospital_name,
+        most_recent_date
+    FROM NotReportedLastWeek
+    ORDER BY hospital_name
+    """
+    parameters = {'selected_week': selected_week,
+                  'previous_week': selected_week - timedelta(weeks=1)}
+
+    df_rpt_7 = pd.read_sql_query(q_rpt_7, conn, params=parameters)
+    df_rpt_7.index = df_rpt_7.index + 1
+
+    st.write("## Hospitals That Did Not Report Data For Selected Week")
+    # ------------------------------ Report 7 ---------------------------------
