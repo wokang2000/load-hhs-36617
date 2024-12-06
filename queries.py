@@ -6,6 +6,7 @@ HospitalLogistics and HospitalSpecificDetails tables in the hospital database.
 # Hospital Logistics Queries
 
 HOSPITAL_LOGISTICS_CREATE_QUERY = """
+DROP TABLE IF EXISTS HospitalLogistics CASCADE;
 CREATE TABLE IF NOT EXISTS HospitalLogistics (
     hospital_pk TEXT REFERENCES HospitalSpecificDetails(hospital_pk),
     collection_week DATE CHECK (collection_week <= CURRENT_DATE::DATE),
@@ -43,12 +44,13 @@ INSERT INTO HospitalLogistics (
     inpatient_beds_used_covid_7_day_avg,
     staffed_icu_adult_patients_confirmed_covid_7_day_avg
 ) VALUES (%s, CAST(%s AS DATE), %s, %s, %s, %s, %s, %s, %s, %s)
-ON CONFLICT (hospital_pk) DO NOTHING;
+ON CONFLICT (hospital_pk, collection_week) DO NOTHING;
 """
 
 # Hospital Specific Details Queries
 
 HOSPITAL_SPECIFIC_DETAILS_CREATE_QUERY = """
+DROP TABLE IF EXISTS HospitalSpecificDetails CASCADE;
 CREATE TABLE IF NOT EXISTS HospitalSpecificDetails (
     hospital_pk TEXT PRIMARY KEY,
     state CHAR(2),
@@ -78,6 +80,7 @@ ON CONFLICT (hospital_pk) DO NOTHING;
 """
 
 HOSPITAL_QUALITY_DETAILS_CREATE_QUERY = """
+DROP TABLE IF EXISTS HospitalQualityDetail CASCADE;
 CREATE TABLE IF NOT EXISTS HospitalQualityDetails (
   hospital_pk TEXT REFERENCES HospitalSpecificDetails(hospital_pk),
   last_updated DATE CHECK (last_updated <= CURRENT_DATE),
