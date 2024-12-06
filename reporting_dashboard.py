@@ -246,11 +246,11 @@ if __name__ == "__main__":
             (
             SELECT *
             FROM WeeklyCases
-            WHERE collection_week = %(selected_week)s) current
+            WHERE collection_week = %(selected_week)s) AS current
         LEFT JOIN
             (SELECT *
             FROM WeeklyCases
-            WHERE collection_week = %(previous_week)s) previous
+            WHERE collection_week = %(previous_week)s) AS previous
         ON current.state = previous.state
     )
     SELECT
@@ -259,10 +259,11 @@ if __name__ == "__main__":
         covid_beds_last_week,
         increase_in_cases
     FROM ChangeInCases
-    ORDER BY increase_in_cases DESC;
+    --ORDER BY increase_in_cases DESC;
     """
     parameters = {'selected_week': selected_week,
-                  'previous_week': selected_week - timedelta(weeks=1)}
+                  'previous_week': selected_week - timedelta(weeks=1)
+                  }
 
     df_rpt_5 = pd.read_sql_query(q_rpt_5, conn, params=parameters)
     df_rpt_5.index = df_rpt_5.index + 1
@@ -306,13 +307,9 @@ if __name__ == "__main__":
         AND current.city = previous.city
     )
     SELECT
-        hospital_name,
-        city,
-        covid_beds_this_week,
-        covid_beds_last_week,
-        cases_difference
+        *
     FROM ChangeInCases
-    ORDER BY cases_difference DESC
+    --ORDER BY cases_difference DESC
     LIMIT 10;
     """
     parameters = {'selected_week': selected_week,
