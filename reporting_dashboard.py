@@ -259,7 +259,11 @@ if __name__ == "__main__":
         covid_beds_last_week,
         increase_in_cases
     FROM ChangeInCases
-    --ORDER BY increase_in_cases DESC;
+    WHERE state IS NOT NULL AND
+    covid_beds_this_week IS NOT NULL AND
+    covid_beds_last_week IS NOT NULL AND 
+    increase_in_cases IS NOT NULL
+    ORDER BY increase_in_cases DESC;
     """
     parameters = {'selected_week': selected_week,
                   'previous_week': selected_week - timedelta(weeks=1)
@@ -307,9 +311,12 @@ if __name__ == "__main__":
         AND current.city = previous.city
     )
     SELECT
-        *
+        hospital_name, covid_beds_this_week, covid_beds_last_week, cases_difference
     FROM ChangeInCases
-    --ORDER BY cases_difference DESC
+    WHERE covid_beds_this_week IS NOT NULL AND
+    covid_beds_last_week IS NOT NULL AND
+    cases_difference IS NOT NULL
+    ORDER BY cases_difference DESC
     LIMIT 10;
     """
     parameters = {'selected_week': selected_week,
@@ -349,6 +356,8 @@ if __name__ == "__main__":
         hospital_name,
         most_recent_date
     FROM NotReportedLastWeek
+    WHERE hospital_name IS NOT NULL AND
+    most_recent_date IS NOT NULL
     ORDER BY hospital_name
     """
     parameters = {'selected_week': selected_week,
